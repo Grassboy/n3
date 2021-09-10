@@ -1,3 +1,40 @@
+POP3 Server with Microsfot Graph API (by Grassboy)
+-------------------------------------------------
+
+This repo is forked from [andris9/n3](https://github.com/andris9/n3)   
+By copying the localStorage json in [Microsoft Graph Explorer](https://developer.microsoft.com/en-us/graph/graph-explorer)   
+We can build up a customize pop3 mail server to fetch mails in Outlook   
+
+### Installation
+1. ```git clone``` this repo
+2. go to your repo's directory, run ```npm install```: You may got some errors when you try to ```npm install iconv```. Make sure you have installed gcc++(linux)/VC++(windows) compile tools in your environment
+3. Open ```credentials.json``` and follow the instruction to copy/paste localStorage of [Microsoft Graph Explorer](https://developer.microsoft.com/en-us/graph/graph-explorer) into this file
+4. Open ```.env``` file to set the default password
+5. Run ```node pop3_server.js``` to run up the pop3 server
+
+### Settings in GMail
+1. Go to [Gmail Mail Settings](https://mail.google.com/mail/u/0/#settings/accounts) to add a new pop3 mail account
+2. Set an arbitary mail account, it doesn't matters :D
+3. Enter the server information about your pop3 server
+   * an arbitary username
+   * the password you've set in ```.env```
+   * the hostname of your pop3 server.
+4. Done, now you can sync emails from Outlook to GMail
+
+### Known Issues
+1. The AccessToken may expired unexpectly even if this repo will refresh access token every 15mins. You just need to re-copy the localStorage content in Microsoft Graph Exporer and restart the pop3 server.
+2. When you reload GMail's Inbox rapidly, the pop3 server may reject your new connection due to there is another pop3 session in the same time
+3. Even if your mail in Outlook has attachment, the attachment will not be shown in GMail's inbox list. But the attachment can still be access when you open the mail
+4. This server can just receive mail from Outlook, you cannot send Outlook mail from this server.
+
+### Why don't you just use the pop3 server setting provided by Outlook?
+That's a good question!! It is obviously a better way.   
+This solution is just another solution to sync Outlook mails into GMail by the special feature of Microsoft Graph Explorer   
+Just for technical research, maybe some one else need it :D
+
+-------------------------------------------------
+#### The following is original README.md in [andris9/n3](https://github.com/andris9/n3)   
+
 N3
 ====
 
