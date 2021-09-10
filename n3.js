@@ -175,6 +175,9 @@ N3.POP3Server = function(socket, server_name, auth, MsgStore){
     //console.log("New connection from "+socket.remoteAddress);
     this.response("+OK POP3 Server ready <"+this.UID+"@"+this.server_name+">");
     
+    socket.on("error", function(e){
+        console.log('Socket Error: ', e);
+    });
     socket.on("data", this.onData.bind(this));
     socket.on("end", this.onEnd.bind(this));
 }
@@ -217,9 +220,9 @@ N3.POP3Server.prototype.updateTimeout = function(){
 N3.POP3Server.prototype.response = function(message){
     var response;
     if(typeof message == "string"){
-        response = new Buffer(message + "\r\n", "utf-8");
+        response = Buffer.from(message + "\r\n", "utf-8");
     }else{
-        response = Buffer.concat([message, new Buffer("\r\n", "utf-8")]);
+        response = Buffer.concat([message, Buffer.from("\r\n", "utf-8")]);
     }
     
     //console.log("SERVER: "+message);
@@ -500,24 +503,28 @@ N3.POP3Server.prototype.cmdSTAT = function(){
 // LIST [msg] lists all messages
 N3.POP3Server.prototype.cmdLIST = function(msg){
     if(this.state!=N3.States.TRANSACTION) return this.response("-ERR Only allowed in transaction mode");
-    
-    this.messages.list(msg, (function(err, list){
-        if(err){
-            return this.response("-ERR LIST command failed")
-        }
-        if(!list)
-            return this.response("-ERR Invalid message ID");
-        
-        if(typeof list == "string"){
-            this.response("+OK "+list);
-        }else{
-            this.response("+OK");
-            for(var i=0;i<list.length;i++){
-                this.response(list[i]);
+    var that = this;
+    that.messages.promise.then(function(){
+        that.messages.list(msg, (function(err, list){
+            if(err){
+                console.log("-ERR LIST command failed")
+                return this.response("-ERR LIST command failed")
             }
-            this.response(".");
-        }
-    }).bind(this));
+            if(!list) {
+                return this.response("-ERR Invalid message ID");
+            }
+            
+            if(typeof list == "string"){
+                this.response("+OK "+list);
+            }else{
+                this.response("+OK");
+                for(var i=0;i<list.length;i++){
+                    this.response(list[i]);
+                }
+                this.response(".");
+            }
+        }).bind(that));
+    });
 }
 
 // UIDL - lists unique identifiers for stored messages
@@ -549,12 +556,14 @@ N3.POP3Server.prototype.cmdRETR = function(msg){
     if(this.state!=N3.States.TRANSACTION) return this.response("-ERR Only allowed in transaction mode");
     
     this.messages.retr(msg, (function(err, message){
+        console.log("retr msg ", msg);
         if(err){
             return this.response("-ERR RETR command failed")
         }
         if(!message){
             return this.response("-ERR Invalid message ID");
         }
+        console.log("retr +OK "+message.length+" octets");
         this.response("+OK "+message.length+" octets");
         this.response(message);
         this.response(".");

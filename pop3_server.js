@@ -1,13 +1,14 @@
+var fs = require('fs');
 var N3 = require("./n3").N3,
     MessageStore = require("./messagestore").MessageStore,
-
     server_name = "fw.node.ee";
 
+var env = require('dotenv').config();
 var markdown = require("node-markdown").Markdown;
 
 // runs after the user is successfully authenticated
 MessageStore.prototype.registerHook = function(){
-
+    return; //comment this line for test;
     // Add a new message to the users inbox (MessageStore)
 
     var curtime = new Date().toLocaleString(),
@@ -39,11 +40,11 @@ MessageStore.prototype.registerHook = function(){
     });
 }
 
-// Currenlty any user with password "12345" will be authenticated successfully
+// Currenlty any user with password [.env: POP3_PASSWORD] will be authenticated successfully
 function AuthStore(user, auth){
     var password;
     if(user){
-        password = 12345;
+        password = process.env.POP3_PASSWORD;
     }
     return auth(password);
 }

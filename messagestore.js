@@ -1,4 +1,5 @@
 var mime = require("./mime");
+var msGraph = require("./msGraph");
 
 // Message handling per session
 
@@ -6,9 +7,26 @@ this.MessageStore = MessageStore;
 
 function MessageStore(user){
     console.log("MessageStore created");
+    var that = this;
     this.user = user;
     var curtime = new Date().toLocaleString();
     this.messages = [];
+    this.promise = new Promise(function(resolve, reject){
+        (async function(){
+            var unread_list = await msGraph.getUnreadMailList();
+            for(var i = 0; i < unread_list.length; i++) {
+                var d = unread_list[i];
+                var mime = await msGraph.getMailMIME(d.id);
+                that.addMessage({
+                    is_mime: true,
+                    mime: mime,
+                    orig_id: d.id
+                });
+                await msGraph.markAsRead(d.id);
+            }
+            resolve();
+        })();
+    });
     if(typeof this.registerHook == "function")
         this.registerHook();
 }
@@ -67,10 +85,18 @@ MessageStore.prototype.uidl = function(msg, callback){
 }
 
 MessageStore.prototype.retr = function(msg, callback){
-    if(!msg || isNaN(msg) || msg<1 || msg>this.messages.length || 
-                                this.messages[msg-1].deleteFlag)
+    var that = this;
+    if(!msg || isNaN(msg) || msg<1 || msg>that.messages.length || 
+                                that.messages[msg-1].deleteFlag)
         return callback(null, false);
-    return callback(null, this.buildMimeMail(this.messages[msg-1]));
+    var mail = that.messages[msg-1];
+    if(mail.is_mime) {
+        return msGraph.markAsRead(mail.orig_id).then(function(){
+            return callback(null, that.buildMimeMail(that.messages[msg-1]));
+        });
+    } else {
+        return callback(null, that.buildMimeMail(that.messages[msg-1]));
+    }
 }
 
 MessageStore.prototype.dele = function(msg, callback){
@@ -106,6 +132,13 @@ MessageStore.prototype.removeDeleted = function(){
 /**
  * MessageStore#buildMimeMail(options) -> String
  * - options (Object): e-mail options
+ *   - is_mime: true: this mail is already mime format 
+ *             false: this mail is not mime format (the n3 original format)
+ *
+ *   for is_mime == true:
+ *   - mime: the mime content of the mail
+ *
+ *   for is_mime == false:
  *   - fromName (String): the name of the sender
  *   - fromAddress (String): the e-mail address of the sender
  *   - toName (String): the name of the recepient
@@ -119,7 +152,11 @@ MessageStore.prototype.removeDeleted = function(){
  **/
 MessageStore.prototype.buildMimeMail = function(options){
     options = options || {};
-    
+    if(options.is_mime) {
+        //console.log(options.mime.length, 'bytes');
+        return options.mime;
+    }
+
     var from, to, subject, date, mime_boundary, attachments, header, body;
     
     from = [];
